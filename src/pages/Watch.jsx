@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
 import YouTube from 'react-youtube'
 import { fetchVideoById, fetchRelatedVideos, formatViewCount, formatTimeAgo, formatDuration } from '../services/youtube'
-import { triggerDownload, DOWNLOAD_OPTIONS } from '../services/download'
 import { useHistory } from '../context/HistoryContext'
 
 /* ── Skeleton for loading state ────────────────────────────────── */
@@ -64,70 +63,7 @@ function RelatedVideoCard({ video }) {
   )
 }
 
-/* ── Download Button with Format Dropdown ──────────────────────── */
-function DownloadButton({ videoId }) {
-  const [open, setOpen] = useState(false)
-  const dropdownRef = useRef(null)
 
-  // Close dropdown on outside click
-  useEffect(() => {
-    function handleClick(e) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
-        setOpen(false)
-      }
-    }
-    if (open) document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
-  }, [open])
-
-  const handlePick = (option) => {
-    triggerDownload(videoId, option)
-    setOpen(false)
-  }
-
-  return (
-    <div className="relative" ref={dropdownRef}>
-      <button
-        onClick={() => setOpen(!open)}
-        className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium bg-gray-100 dark:bg-[#272727] text-gray-800 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-[#3a3a3a] transition-all cursor-pointer"
-      >
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-        </svg>
-        Download
-      </button>
-
-      {open && (
-        <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-[#212121] rounded-xl shadow-xl border border-gray-200 dark:border-[#303030] overflow-hidden z-50">
-          <div className="px-3 py-2 border-b border-gray-100 dark:border-[#303030]">
-            <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-              Select Format
-            </p>
-          </div>
-
-          {DOWNLOAD_OPTIONS.map((option, i) => (
-            <button
-              key={i}
-              onClick={() => handlePick(option)}
-              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#303030] transition-colors cursor-pointer"
-            >
-              {option.format === 'mp3' ? (
-                <svg className="w-4 h-4 text-purple-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
-                </svg>
-              ) : (
-                <svg className="w-4 h-4 text-blue-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                </svg>
-              )}
-              {option.label}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
 
 /* ── Main Watch Page ───────────────────────────────────────────── */
 export default function Watch() {
@@ -306,8 +242,6 @@ export default function Watch() {
                       </div>
                     </div>
 
-                    {/* Download button with format picker */}
-                    <DownloadButton videoId={videoId} />
                   </div>
 
                   {/* Description */}
