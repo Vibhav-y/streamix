@@ -144,5 +144,6 @@ export default function Sidebar({ isOpen, activeFilter, onNavigate }) {
         </div>
       </div>
     </aside>
+    </>
   )
 }

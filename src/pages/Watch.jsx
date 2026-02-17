@@ -111,6 +111,7 @@ export default function Watch() {
       modestbranding: 1,
       rel: 0,
       hl: 'en',
+      playsinline: 1, // Crucial for mobile background/PiP behavior
     },
   }
 
@@ -140,6 +141,57 @@ export default function Watch() {
       </div>
     )
   }
+
+  // ── Media Session API (Background Play / Lock Screen) ──────────
+  useEffect(() => {
+    if (!video || !navigator.mediaSession) return
+
+    // 1. Set Metadata (Title, Artist, Artwork)
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: video.title,
+      artist: video.channelTitle,
+      artwork: [
+        { src: video.thumbnail, sizes: '480x360', type: 'image/jpeg' }
+      ]
+    })
+
+    // 2. Set Action Handlers (Lock Screen Controls)
+    const handleAction = (action, fn) => {
+      try {
+        navigator.mediaSession.setActionHandler(action, fn)
+      } catch (e) {
+        // Ignore unsupported actions
+      }
+    }
+
+    handleAction('play', () => playerRef.current?.playVideo())
+    handleAction('pause', () => playerRef.current?.pauseVideo())
+    handleAction('seekbackward', (details) => {
+      const skipTime = details.seekOffset || 10
+      playerRef.current?.seekTo(playerRef.current?.getCurrentTime() - skipTime, true)
+    })
+    handleAction('seekforward', (details) => {
+      const skipTime = details.seekOffset || 10
+      playerRef.current?.seekTo(playerRef.current?.getCurrentTime() + skipTime, true)
+    })
+    handleAction('previoustrack', () => {
+       // Logic to play previous video could go here
+    })
+    handleAction('nexttrack', () => {
+       // Logic to auto-play next video could go here
+    })
+
+  }, [video])
+
+  // Update Playback State for Media Session
+  useEffect(() => {
+    if (!navigator.mediaSession) return
+    if (isPaused || isEnded) {
+      navigator.mediaSession.playbackState = 'paused'
+    } else {
+      navigator.mediaSession.playbackState = 'playing'
+    }
+  }, [isPaused, isEnded])
 
   // ── Keyboard Controls ──────────────────────────────────────────
   useEffect(() => {
