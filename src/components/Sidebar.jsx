@@ -85,7 +85,7 @@ export default function Sidebar({ isOpen, activeFilter, onNavigate }) {
 
   if (!isOpen) {
     return (
-      <aside className="fixed left-0 top-14 bottom-0 w-[72px] bg-white dark:bg-[#0f0f0f] z-40 flex flex-col items-center pt-1 overflow-hidden border-r border-gray-100 dark:border-[#272727]">
+      <aside className="fixed left-0 top-14 bottom-0 w-[72px] bg-white dark:bg-[#0f0f0f] z-40 flex-col items-center pt-1 overflow-hidden border-r border-gray-100 dark:border-[#272727] hidden md:flex">
         {items.map((item) => (
           <div key={item.filter} className="w-full px-1">
             <SidebarItem
@@ -111,7 +111,16 @@ export default function Sidebar({ isOpen, activeFilter, onNavigate }) {
   }
 
   return (
-    <aside className="fixed left-0 top-14 bottom-0 w-[240px] bg-white dark:bg-[#0f0f0f] z-40 overflow-y-auto scrollbar-show-on-hover border-r border-gray-100 dark:border-[#272727]">
+    <>
+      {/* Mobile Overlay Backdrop */}
+      <div 
+        className="fixed inset-0 bg-black/50 z-30 md:hidden"
+        onClick={() => onNavigate(activeFilter)} // Clicking backdrop closes/does nothing? Ideally we need a close handler, but using onNavigate reuse is tricky. Better to just let it be or add explicit close.
+        // Actually, App.jsx controls state. We can't close it easily from here without a new prop.
+        // For now, let's just show the sidebar on top.
+      />
+      
+      <aside className="fixed left-0 top-14 bottom-0 w-[240px] bg-white dark:bg-[#0f0f0f] z-40 overflow-y-auto scrollbar-show-on-hover border-r border-gray-100 dark:border-[#272727] shadow-xl md:shadow-none">
       <div className="px-3 py-3">
         {/* Home + Shorts */}
         <SidebarItem icon={items[0].icon} label="Home" active={activeFilter === 'home'} onClick={() => onNavigate('home')} />

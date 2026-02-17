@@ -199,8 +199,8 @@ export default function Watch() {
   }, [])
 
   return (
-    <div className="max-w-[1800px] mx-auto p-6">
-      <div className="flex flex-col xl:flex-row gap-6">
+    <div className="max-w-[1800px] mx-auto p-4 md:p-6">
+      <div className="flex flex-col lg:flex-row gap-6">
 
         {/* ── Left column: Player + Info ───────────────────── */}
         <div className="flex-1 min-w-0">
@@ -325,8 +325,8 @@ export default function Watch() {
         </div>
 
         {/* ── Right column: Related Videos ─────────────────── */}
-        <div className="xl:w-[400px] flex-shrink-0 space-y-3">
-          <h3 className="text-base font-bold text-gray-900 dark:text-white mb-3 xl:hidden">
+        <div className="lg:w-[350px] xl:w-[400px] flex-shrink-0 space-y-3">
+          <h3 className="text-base font-bold text-gray-900 dark:text-white mb-3 lg:hidden">
             Related Videos
           </h3>
           {loading

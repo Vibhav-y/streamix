@@ -51,7 +51,7 @@ function App() {
           />
 
           <main className={`pt-14 transition-all duration-200 ${
-            sidebarOpen ? 'ml-[240px]' : 'ml-[72px]'
+            sidebarOpen ? 'md:ml-[240px]' : 'md:ml-[72px]'
           }`}>
             <Routes>
               <Route path="/" element={<Home searchQuery={searchQuery} sidebarFilter={sidebarFilter} />} />

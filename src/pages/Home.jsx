@@ -124,7 +124,7 @@
     const showChips = sidebarFilter === 'home' && !searchQuery?.trim()
 
     return (
-      <div className="p-6">
+      <div className="p-4 md:p-6">
         {FILTER_LABELS[sidebarFilter] && !searchQuery?.trim() && (
           <h2 className="text-2xl font-bold mb-5 text-gray-900 dark:text-white">
             {FILTER_LABELS[sidebarFilter]}
