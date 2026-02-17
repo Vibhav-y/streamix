@@ -1,4 +1,4 @@
-# Streamix 🎥
+.# Streamix 🎥
 
 A modern, ad-free YouTube frontend built with React, Tailwind CSS, and Vite. Features a premium UI, background play, video downloads, and local history management.
 
