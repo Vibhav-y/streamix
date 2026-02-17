@@ -11,7 +11,7 @@ function getApiKey() {
 /**
  * Fetch most popular videos
  */
-export async function fetchPopularVideos(maxResults = 20, categoryId = '0') {
+export async function fetchPopularVideos(maxResults = 20, categoryId = '0', pageToken = '') {
   const params = new URLSearchParams({
     part: 'snippet,contentDetails,statistics',
     chart: 'mostPopular',
@@ -24,17 +24,25 @@ export async function fetchPopularVideos(maxResults = 20, categoryId = '0') {
     params.set('videoCategoryId', categoryId)
   }
 
+  if (pageToken) {
+    params.set('pageToken', pageToken)
+  }
+
   const res = await fetch(`${BASE_URL}/videos?${params}`)
   if (!res.ok) throw new Error(`YouTube API error: ${res.status}`)
   const data = await res.json()
-  return data.items.map(formatVideo)
+  
+  return {
+    items: data.items.map(formatVideo),
+    nextPageToken: data.nextPageToken,
+  }
 }
 
 /**
  * Search videos by query
  */
-export async function searchVideos(query, maxResults = 20) {
-  if (!query?.trim()) return []
+export async function searchVideos(query, maxResults = 20, pageToken = '') {
+  if (!query?.trim()) return { items: [], nextPageToken: null }
 
   // Step 1: search for video IDs
   const searchParams = new URLSearchParams({
@@ -45,12 +53,16 @@ export async function searchVideos(query, maxResults = 20) {
     key: getApiKey(),
   })
 
+  if (pageToken) {
+    searchParams.set('pageToken', pageToken)
+  }
+
   const searchRes = await fetch(`${BASE_URL}/search?${searchParams}`)
   if (!searchRes.ok) throw new Error(`YouTube API error: ${searchRes.status}`)
   const searchData = await searchRes.json()
 
   const ids = searchData.items.map((item) => item.id.videoId).join(',')
-  if (!ids) return []
+  if (!ids) return { items: [], nextPageToken: searchData.nextPageToken }
 
   // Step 2: fetch full details for those IDs
   const detailParams = new URLSearchParams({
@@ -62,7 +74,11 @@ export async function searchVideos(query, maxResults = 20) {
   const detailRes = await fetch(`${BASE_URL}/videos?${detailParams}`)
   if (!detailRes.ok) throw new Error(`YouTube API error: ${detailRes.status}`)
   const detailData = await detailRes.json()
-  return detailData.items.map(formatVideo)
+  
+  return {
+    items: detailData.items.map(formatVideo),
+    nextPageToken: searchData.nextPageToken,
+  }
 }
 
 /**
@@ -93,12 +109,23 @@ export async function fetchRelatedVideos(videoId, maxResults = 15) {
     const video = await fetchVideoById(videoId)
     if (!video) throw new Error('Video not found')
 
-    // Take first few meaningful words from the title as a search query
-    const keywords = video.title
-      .replace(/[^\w\s]/g, '')
-      .split(/\s+/)
-      .slice(0, 4)
-      .join(' ')
+    // Priority 1: Use video tags if available (most relevant)
+    let keywords = ''
+    if (video.tags && video.tags.length > 0) {
+      // Use top 3-4 tags
+      keywords = video.tags.slice(0, 4).join(' ')
+    } else {
+      // Priority 2: Title + Channel Name
+      // Extract meaningful words from title
+      const titleWords = video.title
+        .replace(/[^\w\s]/g, '')
+        .split(/\s+/)
+        .filter(w => w.length > 3) // filter out small words like 'the', 'and'
+        .slice(0, 3)
+        .join(' ')
+      
+      keywords = `${titleWords} ${video.channelTitle}`
+    }
 
     const searchParams = new URLSearchParams({
       part: 'snippet',
@@ -131,7 +158,8 @@ export async function fetchRelatedVideos(videoId, maxResults = 15) {
     return detailData.items.map(formatVideo)
   } catch {
     // Fallback: just fetch popular videos instead
-    return fetchPopularVideos(maxResults)
+    const { items } = await fetchPopularVideos(maxResults)
+    return items
   }
 }
 
@@ -172,6 +200,7 @@ function formatVideo(item) {
     viewCount: item.statistics?.viewCount || '0',
     likeCount: item.statistics?.likeCount || '0',
     commentCount: item.statistics?.commentCount || '0',
+    tags: item.snippet.tags || [],
   }
 }
 

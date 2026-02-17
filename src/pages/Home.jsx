@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { fetchPopularVideos, searchVideos, fetchCategories } from '../services/youtube'
+import { useHistory } from '../context/HistoryContext'
 import VideoCard from '../components/VideoCard'
 
 /* ── Skeleton card while loading ───────────────────────────────── */
@@ -40,7 +41,11 @@ export default function Home({ searchQuery, sidebarFilter = 'home' }) {
   const [activeCategory, setActiveCategory] = useState('0')
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
+  const [nextPageToken, setNextPageToken] = useState('')
   const [error, setError] = useState(null)
+  
+  const { getRecommendationQuery } = useHistory()
+  const [recommended, setRecommended] = useState([])
 
   /* ── Load categories once ─────────────────────────────────── */
   useEffect(() => {
@@ -68,7 +73,27 @@ export default function Home({ searchQuery, sidebarFilter = 'home' }) {
         // 'home' — use the chip filter
         result = await fetchPopularVideos(20, activeCategory)
       }
-      setVideos(result)
+      
+      // Handle response format change (now returns { items, nextPageToken })
+      if (result.items) {
+        setVideos(result.items)
+        setNextPageToken(result.nextPageToken || '')
+      } else {
+        // Fallback for safety if api weirdness
+        setVideos([])
+        setNextPageToken('')
+      }
+
+      // Fetch recommendations if on home screen and no search
+      if (sidebarFilter === 'home' && !searchQuery?.trim()) {
+         try {
+           const query = getRecommendationQuery()
+           if (query) {
+             const recs = await searchVideos(query, 8)
+             setRecommended(recs.items || [])
+           }
+         } catch(e) { console.error(e) }
+      }
     } catch (err) {
       console.error('Failed to fetch videos:', err)
       setError(err.message || 'Failed to load videos')
@@ -87,17 +112,23 @@ export default function Home({ searchQuery, sidebarFilter = 'home' }) {
     try {
       let more
       if (searchQuery?.trim()) {
-        more = await searchVideos(searchQuery, 10)
+        more = await searchVideos(searchQuery, 10, nextPageToken)
       } else if (sidebarFilter === 'shorts') {
-        more = await searchVideos('#shorts', 10)
+        more = await searchVideos('#shorts', 10, nextPageToken)
       } else if (sidebarFilter === 'music') {
-        more = await fetchPopularVideos(10, '10')
+        more = await fetchPopularVideos(10, '10', nextPageToken)
+      } else if (sidebarFilter === 'trending') {
+        more = await fetchPopularVideos(10, '0', nextPageToken)
       } else {
-        more = await fetchPopularVideos(10, activeCategory)
+        more = await fetchPopularVideos(10, activeCategory, nextPageToken)
       }
-      const existingIds = new Set(videos.map((v) => v.id))
-      const newVideos = more.filter((v) => !existingIds.has(v.id))
-      setVideos((prev) => [...prev, ...newVideos])
+
+      if (more.items) {
+        const existingIds = new Set(videos.map((v) => v.id))
+        const newVideos = more.items.filter((v) => !existingIds.has(v.id))
+        setVideos((prev) => [...prev, ...newVideos])
+        setNextPageToken(more.nextPageToken || '')
+      }
     } catch (err) {
       console.error('Failed to load more:', err)
     } finally {
@@ -151,6 +182,21 @@ export default function Home({ searchQuery, sidebarFilter = 'home' }) {
         <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
           Search results for &ldquo;{searchQuery}&rdquo;
         </h2>
+      )}
+
+      {/* ── Recommendations Section ────────────────────────── */}
+      {sidebarFilter === 'home' && !searchQuery?.trim() && recommended.length > 0 && !loading && (
+        <div className="mb-10">
+          <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-white flex items-center gap-2">
+            <span className="text-red-600">★</span> Recommended for You
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+             {recommended.map((video) => (
+               <VideoCard key={video.id} video={video} />
+             ))}
+          </div>
+          <div className="h-px bg-gray-200 dark:bg-[#303030] mt-8" />
+        </div>
       )}
 
       {/* ── Error state ───────────────────────────────────── */}

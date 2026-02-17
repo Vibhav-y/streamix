@@ -3,6 +3,7 @@ import { useSearchParams, Link } from 'react-router-dom'
 import YouTube from 'react-youtube'
 import { fetchVideoById, fetchRelatedVideos, formatViewCount, formatTimeAgo, formatDuration } from '../services/youtube'
 import { triggerDownload, DOWNLOAD_OPTIONS } from '../services/download'
+import { useHistory } from '../context/HistoryContext'
 
 /* ── Skeleton for loading state ────────────────────────────────── */
 function PlayerSkeleton() {
@@ -138,11 +139,20 @@ export default function Watch() {
   const [loading, setLoading] = useState(true)
   const [descExpanded, setDescExpanded] = useState(false)
 
+  const [isEnded, setIsEnded] = useState(false)
+  const [isPaused, setIsPaused] = useState(false)
+  const playerRef = useRef(null)
+  
+  const { addToHistory } = useHistory()
+
   useEffect(() => {
     if (!videoId) return
 
     setLoading(true)
     setDescExpanded(false)
+    setDescExpanded(false)
+    setIsEnded(false)
+    setIsPaused(false)
 
     Promise.all([
       fetchVideoById(videoId),
@@ -150,6 +160,7 @@ export default function Watch() {
     ]).then(([v, r]) => {
       setVideo(v)
       setRelated(r)
+      if (v) addToHistory(v)
     }).catch(console.error)
       .finally(() => setLoading(false))
 
@@ -163,7 +174,27 @@ export default function Watch() {
       autoplay: 1,
       modestbranding: 1,
       rel: 0,
+      hl: 'en',
     },
+  }
+
+  const handleStateChange = (e) => {
+    // YouTube Player State: 0 = ended, 2 = paused
+    if (e.data === 0) {
+      setIsEnded(true)
+      setIsPaused(false)
+    } else if (e.data === 2) {
+      setIsPaused(true)
+    } else {
+      setIsEnded(false)
+      setIsPaused(false)
+    }
+  }
+
+  const handleResume = () => {
+    setIsEnded(false)
+    setIsPaused(false)
+    playerRef.current?.internalPlayer?.playVideo()
   }
 
   if (!videoId) {
@@ -185,13 +216,71 @@ export default function Watch() {
           ) : (
             <>
               {/* Player */}
-              <div className="aspect-video bg-black rounded-xl overflow-hidden shadow-2xl">
+              <div className="relative aspect-video bg-black rounded-xl overflow-hidden shadow-2xl group">
                 <YouTube
                   videoId={videoId}
                   opts={playerOpts}
                   className="w-full h-full"
                   iframeClassName="w-full h-full"
+                  onStateChange={handleStateChange}
+                  onReady={(e) => (playerRef.current = e.target)}
                 />
+
+                {/* ── Custom Overlay (Ended or Paused) ─────── */}
+                {(isEnded || isPaused) && (
+                  <div className="absolute inset-0 z-10 bg-black/80 flex flex-col items-center justify-center p-6 text-center animate-fade-in backdrop-blur-sm">
+                    <h3 className="text-white text-lg font-bold mb-6">
+                      {isEnded ? 'Up Next' : 'Paused'}
+                    </h3>
+                    
+                    <div className="flex flex-wrap justify-center gap-4 mb-8">
+                      {related.slice(0, 3).map((v) => (
+                        <Link 
+                          key={v.id} 
+                          to={`/watch?v=${v.id}`}
+                          className="w-48 group/card flex flex-col items-center"
+                        >
+                          <div className="relative w-full aspect-video rounded-lg overflow-hidden mb-2 ring-2 ring-transparent group-hover/card:ring-blue-500 transition-all">
+                            <img src={v.thumbnail} alt={v.title} className="w-full h-full object-cover" />
+                            <div className="absolute inset-0 bg-black/20 group-hover/card:bg-transparent transition-colors" />
+                            {/* Play icon overlay on hover */}
+                            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/card:opacity-100 transition-opacity">
+                              <div className="bg-black/50 rounded-full p-2">
+                                <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
+                                  <path d="M8 5v14l11-7z" />
+                                </svg>
+                              </div>
+                            </div>
+                          </div>
+                          <p className="text-white text-xs font-medium line-clamp-2 leading-tight group-hover/card:text-blue-400 text-center">
+                            {v.title}
+                          </p>
+                        </Link>
+                      ))}
+                    </div>
+
+                    <button 
+                      onClick={handleResume}
+                      className="flex items-center gap-2 px-8 py-3 bg-white text-black hover:bg-gray-200 rounded-full font-bold text-lg transition-colors cursor-pointer shadow-lg transform hover:scale-105 active:scale-95"
+                    >
+                      {isEnded ? (
+                        <>
+                          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                          </svg>
+                          Replay
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M8 5v14l11-7z" />
+                          </svg>
+                          Resume
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
               </div>
 
               {video && (
