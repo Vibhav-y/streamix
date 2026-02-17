@@ -130,7 +130,7 @@ export default function Watch() {
   const handleResume = () => {
     setIsEnded(false)
     setIsPaused(false)
-    playerRef.current?.internalPlayer?.playVideo()
+    playerRef.current?.playVideo()
   }
 
   if (!videoId) {
@@ -140,6 +140,63 @@ export default function Watch() {
       </div>
     )
   }
+
+  // ── Keyboard Controls ──────────────────────────────────────────
+  useEffect(() => {
+    function handleKeyDown(e) {
+      if (!playerRef.current) return
+      
+      // Ignore if typing in an input
+      if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName) || document.activeElement.isContentEditable) return
+
+      const player = playerRef.current
+      
+      switch(e.key.toLowerCase()) {
+        case ' ':
+        case 'k':
+          e.preventDefault() // Prevent scrolling for space
+          // 1 = playing
+          if (player.getPlayerState() === 1) player.pauseVideo()
+          else player.playVideo()
+          break
+          
+        case 'arrowleft':
+          e.preventDefault() // prevent scroll
+          player.seekTo(player.getCurrentTime() - 5, true)
+          break
+          
+        case 'arrowright':
+          e.preventDefault() // prevent scroll
+          player.seekTo(player.getCurrentTime() + 5, true)
+          break
+          
+        case 'j':
+          player.seekTo(player.getCurrentTime() - 10, true)
+          break
+          
+        case 'l':
+          player.seekTo(player.getCurrentTime() + 10, true)
+          break
+          
+        case 'm':
+          if (player.isMuted()) player.unMute()
+          else player.mute()
+          break
+          
+        case 'f':
+          const iframe = player.getIframe()
+          if (!document.fullscreenElement) {
+            iframe.requestFullscreen().catch(err => console.error(err))
+          } else {
+            document.exitFullscreen()
+          }
+          break
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
 
   return (
     <div className="max-w-[1800px] mx-auto p-6">
